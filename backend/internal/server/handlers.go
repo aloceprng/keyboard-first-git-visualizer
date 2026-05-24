@@ -84,29 +84,17 @@ func (s *Server) handleGraph(w http.ResponseWriter, r *http.Request) {
 
 // dispatches between /commit/:sha (metadata) and /commit/:sha/diff (unified diff)
 func (s *Server) handleCommitRoute(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
+    if r.Method != http.MethodGet {
+        writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+        return
+    }
 
-	rest := strings.TrimPrefix(r.URL.Path, "/commit/")
-
-	if strings.HasSuffix(rest, "/diff") {
-		sha := strings.TrimSuffix(rest, "/diff")
-		if err := validateSHA(sha); err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		s.handleCommitDiff(w, r, sha)
-		return
-	}
-
-	sha := rest
-	if err := validateSHA(sha); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	s.handleCommit(w, r, sha)
+    sha := strings.TrimPrefix(r.URL.Path, "/commit/")
+    if err := validateSHA(sha); err != nil {
+        writeError(w, http.StatusBadRequest, err.Error())
+        return
+    }
+    s.handleCommit(w, r, sha)
 }
 
 // serves full commit metadata (no diff content)
@@ -140,38 +128,6 @@ func (s *Server) handleCommit(w http.ResponseWriter, r *http.Request, sha string
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// serves GET /commit/:sha/diff — full unified diff, streamed
-// each DiffFile is flushed as soon as it is available so large diffs render
-// progressively rather than arriving as one big payload
-func (s *Server) handleCommitDiff(w http.ResponseWriter, r *http.Request, sha string) {
-	commit, err := s.repo.CommitObject(plumbing.NewHash(sha))
-	if err != nil {
-		writeError(w, http.StatusNotFound, "commit not found")
-		return
-	}
-
-	// Diff against first parent; initial commits diff against an empty tree.
-	var patch interface {
-		FilePatches() []interface{} // placeholder — use actual go-git types
-	}
-	_ = commit
-	_ = patch
-
-	// Real implementation:
-	//   parent, err := commit.Parent(0)  // first parent
-	//   patch, err := parent.Patch(commit)
-	//   for _, filePatch := range patch.FilePatches() { ... stream file ... }
-	//
-	// For initial commits (no parent):
-	//   emptyTree, _ := s.repo.TreeObject(plumbing.NewHash("4b825dc642..."))
-	//   patch, _ = emptyTree.Patch(commitTree)
-
-	w.Header().Set("Content-Type", "application/x-ndjson")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	// actual streaming implementation goes here
-}
-
-
 // serves GET /refs — all refs and in-progress operation state
 func (s *Server) handleRefs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -185,7 +141,7 @@ func (s *Server) handleRefs(w http.ResponseWriter, r *http.Request) {
 			Name:      name,
 			SHA:       sha,
 			Type:      refType(name),
-			IsCurrent: s.graph.CommitRefs[sha] != nil && isCurrentBranch(name, s.graph),
+			IsCurrent: isCurrentBranch(name, s.graph),
 		})
 	}
 
@@ -472,15 +428,20 @@ func isCurrentBranch(name string, g *graph.Graph) bool {
 
 // returns the current HEAD SHA and the branch name it points to
 func resolveHEAD(g *graph.Graph) (sha string, branch string) {
-	sha = g.RefIndex["HEAD"]
+    sha = g.RefIndex["HEAD"]
 
-	for name, refSHA := range g.RefIndex {
-		if strings.HasPrefix(name, "refs/heads/") && refSHA == sha {
-			branch = strings.TrimPrefix(name, "refs/heads/")
-			return
-		}
-	}
-	return sha, "" // detached HEAD
+    if headRef, ok := g.RefIndex["HEAD_REF"]; ok && headRef != "" {
+        branch = strings.TrimPrefix(headRef, "refs/heads/")
+        return
+    }
+
+    for name, refSHA := range g.RefIndex {
+        if strings.HasPrefix(name, "refs/heads/") && refSHA == sha {
+            branch = strings.TrimPrefix(name, "refs/heads/")
+            return
+        }
+    }
+    return sha, "" // detached HEAD
 }
 
 // returns an error if sha is not a plausible git SHA
