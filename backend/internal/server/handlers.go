@@ -11,9 +11,9 @@ import (
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 
-	"github.com/aloceprng/keyboard-first-git-visualizer/internal/action"
-	gitpkg "github.com/aloceprng/keyboard-first-git-visualizer/internal/git"
-	"github.com/aloceprng/keyboard-first-git-visualizer/internal/graph"
+	"github.com/aloceprng/keyboard-first-git-visualizer/backend/internal/action"
+	gitpkg "github.com/aloceprng/keyboard-first-git-visualizer/backend/internal/git"
+	"github.com/aloceprng/keyboard-first-git-visualizer/backend/internal/graph"
 )
 
 var destructiveActions = map[string]bool{

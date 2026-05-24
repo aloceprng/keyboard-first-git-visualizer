@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aloceprng/keyboard-first-git-visualizer/internal/action"
-	"github.com/aloceprng/keyboard-first-git-visualizer/internal/graph"
-	"github.com/aloceprng/keyboard-first-git-visualizer/internal/search"
-	"github.com/aloceprng/keyboard-first-git-visualizer/internal/watcher"
+	"github.com/aloceprng/keyboard-first-git-visualizer/backend/internal/action"
+	"github.com/aloceprng/keyboard-first-git-visualizer/backend/internal/graph"
+	"github.com/aloceprng/keyboard-first-git-visualizer/backend/internal/search"
+	"github.com/aloceprng/keyboard-first-git-visualizer/backend/internal/watcher"
 	gogit "github.com/go-git/go-git/v5"
 )
 
