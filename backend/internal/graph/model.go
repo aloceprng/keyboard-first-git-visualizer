@@ -48,12 +48,18 @@ type Row struct {
 }
  
 type Graph struct {
+	mu          sync.RWMutex
 	Rows        []*Row
 	BySHA       map[string]*Commit
 	RefIndex    map[string]string
 	CommitRefs  map[string][]string
 	TotalLanes  int
 }
+
+func (g *Graph) Lock()    { g.mu.Lock() }
+func (g *Graph) Unlock()  { g.mu.Unlock() }
+func (g *Graph) RLock()   { g.mu.RLock() }
+func (g *Graph) RUnlock() { g.mu.RUnlock() }
  
 type LaneSlot struct {
 	SHA      string
