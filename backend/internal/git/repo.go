@@ -92,7 +92,7 @@ func BuildRefIndex(repo *git.Repository) (map[string]string, map[string][]string
 }
  
 // checks for the presence of MERGE_HEAD, rebase-merge/, rebase-apply/, CHERRY_PICK_HEAD, REVERT_HEAD, BISECT_LOG
-nc InProgressState(repoPath string) (string, error) {
+func InProgressState(repoPath string) (string, error) {
 	gitDir := filepath.Join(repoPath, ".git")
 
 	checks := []struct {

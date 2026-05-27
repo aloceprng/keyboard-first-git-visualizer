@@ -1,6 +1,9 @@
 package graph
  
-import "time"
+import (
+	"sync"
+	"time"
+)
  
 type EdgeType int
  
