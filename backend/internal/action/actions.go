@@ -347,10 +347,10 @@ func (r *Runner) fetch(ctx context.Context, args map[string]string, out chan<- A
 }
  
 // expands a partial SHA or ref name to a full 40-char SHA
-func (r *Runner) resolveSHA(ref string, ctx context.Context) (string, error) { 
+func (r *Runner) resolveSHA(ref string) (string, error) {
 	if ref == "" { return "", fmt.Errorf("empty ref") }
 
-	cmd := r.gitCmd(ctx, "rev-parse", "--verify", ref)
+	cmd := r.gitCmd(context.Background(), "rev-parse", "--verify", ref)
 
 	out, err := cmd.Output()
 	if err != nil {	return "", fmt.Errorf("failed to resolve ref %q: %w", ref, err) }

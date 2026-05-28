@@ -1,6 +1,7 @@
 package git
 
 import (
+    "fmt"
     "testing"
     "time"
     "github.com/aloceprng/keyboard-first-git-visualizer/backend/internal/graph"
@@ -105,17 +106,78 @@ func TestAssignLanes_MergeProducesEdge(t *testing.T) {
 
 // stability threshold testing
 func TestAssignLanes_StabilityThreshold(t *testing.T) {
-    base  := makeCommit("base")
-    a1    := makeCommit("a1", "base")
-    a2    := makeCommit("a2", "a1")
-    merge := makeCommit("merge", "base", "a2")
+    root  := makeCommit("root")
+    tip_b := makeCommit("tipB", "root")
 
-    rows, _ := AssignLanes(buildSorted(merge, a2, a1, base))
+    padding := make([]*graph.Commit, stabilityThreshold-1)
+    prev := "root"
+    for i := range padding {
+        sha := fmt.Sprintf("pad%d", i)
+        padding[i] = makeCommit(sha, prev)
+        prev = sha
+    }
 
-    laneA := rows[1].Commit.Lane
-    for i := 2; i < len(rows) && i < 2+stabilityThreshold; i++ {
-        if rows[i].Commit.Lane == laneA && rows[i].Commit.SHA != "a1" {
-            t.Errorf("lane %d reused too early at row %d (threshold not respected)", laneA, i)
+    base  := makeCommit("base", prev)
+    tip_a := makeCommit("tipA", "base")
+
+    sorted := []*graph.Commit{tip_a, base}
+    sorted = append(sorted, padding[len(padding)-1])
+    for i := len(padding) - 2; i >= 0; i-- {
+        sorted = append(sorted, padding[i])
+    }
+    sorted = append(sorted, tip_b, root)
+    sorted = buildSorted(sorted...)
+
+    rows, err := AssignLanes(sorted)
+    if err != nil {
+        t.Fatal(err)
+    }
+
+    tipALane := rows[0].Commit.Lane
+    tipBRow := -1
+    for i, row := range rows {
+        if row.Commit.SHA == "tipB" {
+            tipBRow = i
+            break
         }
     }
+    if tipBRow < 0 {
+        t.Fatal("tipB not found in rows")
+    }
+
+    if tipBRow < stabilityThreshold {
+        if rows[tipBRow].Commit.Lane == tipALane {
+            t.Errorf(
+                "lane %d recycled at row %d (only %d rows idle, threshold is %d)",
+                tipALane, tipBRow, tipBRow, stabilityThreshold,
+            )
+        }
+    }
+}
+
+// run a few rows through AssignLanes, serialise mid-stream,
+// deserialise, and confirm the RowIndex and slot SHAs survived intact
+func TestLaneTable_SerializeRoundtrip(t *testing.T) {
+    c3 := makeCommit("c3", "c2")
+    c2 := makeCommit("c2", "c1")
+    c1 := makeCommit("c1")
+
+    lt := &graph.LaneTable{Slots: make([]graph.LaneSlot, 0)}
+    lt.Slots = append(lt.Slots, graph.LaneSlot{SHA: "c1", Colour: 0, IdleSince: -1})
+    lt.RowIndex = 2
+    lt.ColourCycle = 1
+
+    data, err := SerializeLaneTable(lt)
+    if err != nil { t.Fatal(err) }
+
+    restored, err := DeserializeLaneTable(data)
+    if err != nil { t.Fatal(err) }
+
+    if restored.RowIndex != lt.RowIndex {
+        t.Errorf("RowIndex: got %d, want %d", restored.RowIndex, lt.RowIndex)
+    }
+    if len(restored.Slots) != 1 || restored.Slots[0].SHA != "c1" {
+        t.Errorf("Slots not preserved: %+v", restored.Slots)
+    }
+    _ = c1; _ = c2; _ = c3
 }

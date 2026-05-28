@@ -145,7 +145,7 @@ func isDestructive(action string) bool {
  
 // checks for MERGE_HEAD or rebase-merge/ and reads conflicted
 // paths from the index. Returns the list of conflicted file paths.
-func (r *Runner) detectConflicts() ([]string, error) { 
+func (r *Runner) detectConflicts(ctx context.Context) ([]string, error) {
 	gitDir := filepath.Join(r.repoPath, ".git")
 
 	mergeHead := filepath.Join(gitDir, "MERGE_HEAD")
@@ -157,7 +157,7 @@ func (r *Runner) detectConflicts() ([]string, error) {
 	if mergeErr != nil && rebaseErr != nil { return nil, nil }
 
 	cmd := r.gitCmd(
-		context.Background(),
+		ctx,
 		"diff",
 		"--name-only",
 		"--diff-filter=U",
@@ -216,7 +216,7 @@ func (r *Runner) streamSubprocess(ctx context.Context, cmd *exec.Cmd, out chan<-
 
 	if waitErr != nil {
 
-		conflicts, detectErr := r.detectConflicts()
+		conflicts, detectErr := r.detectConflicts(ctx)
 		if detectErr == nil && len(conflicts) > 0 {
 			out <- ActionEvent{
 				Type:  EventConflict,
