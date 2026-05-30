@@ -218,13 +218,13 @@ func (idx *Index) scoreByKind( sha, query, kind string, queryTrigrams []string, 
 
 	switch kind {
 	case "author":
-		target = strings.ToLower(c.Author)
+		target = strings.ToLower(c.Author.Name + " " + c.Author.Email)
 
 	case "file":
-		target = strings.ToLower(filepath.Base(c.Message)) // still assumes file stored here
+		target = strings.ToLower(filepath.Base(c.Subject)) // fallback to subject
 
 	default:
-		target = strings.ToLower(c.Message)
+		target = strings.ToLower(c.Subject + " " + c.Body)
 	}
 
 	targetTrigrams := extractTrigrams(target)

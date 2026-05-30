@@ -9,7 +9,7 @@ import (
  
 type Result struct {
 	SHA       string
-	Score     float64
+	Score     Score
 	Highlight []int
 }
 
@@ -32,16 +32,18 @@ func Build(commits []*graph.Commit) *Index {
 
 	for _, c := range commits {
 		commitsMap[c.SHA] = c
-		authors[c.Author] = append(authors[c.Author], c)
+		authors[c.Author.Email] = append(authors[c.Author.Email], c)
 		seenTrigrams := make(map[string]struct{})
 
-		for _, t := range extractTrigrams(c.Message) {
+		msg := strings.ToLower(c.Subject + " " + c.Body)
+
+		for _, t := range extractTrigrams(msg) {
 			if _, ok := seenTrigrams[t]; ok { continue }
 			seenTrigrams[t] = struct{}{}
 			trigrams[t] = append(trigrams[t], c.SHA)
 		}
 
-		for _, w := range strings.Fields(strings.ToLower(c.Message)) { tokenSet[w] = struct{}{} }
+		for _, w := range strings.Fields(msg) { tokenSet[w] = struct{}{} }
 	}
 
 	tokens := make([]string, 0, len(tokenSet))
@@ -94,7 +96,7 @@ func (idx *Index) Search(query string, kind string, limit int) []Result {
 	default:
 		if len(qTrigrams) == 0 {
 			for sha, c := range idx.commits {
-				if strings.Contains(strings.ToLower(c.Message), query) {
+				if strings.Contains(strings.ToLower(c.Subject+" "+c.Body), query) {
 					shas = append(shas, sha)
 				}
 			}
@@ -112,7 +114,7 @@ func (idx *Index) Search(query string, kind string, limit int) []Result {
 		c, ok := idx.commits[sha]
 		if !ok { continue }
 
-		msg := strings.ToLower(c.Message)
+		msg := strings.ToLower(c.Subject + " " + c.Body)
 
 		var score float64
 
@@ -138,12 +140,12 @@ func (idx *Index) Search(query string, kind string, limit int) []Result {
 
 		results = append(results, Result{
 			SHA: sha,
-			Score: score,
+			Score: Score{Total: score},
 			Highlight: idx.highlightRanges(sha, query),
 		})
 	}
 
-	sort.Slice(results, func(i, j int) bool { return results[i].Score > results[j].Score })
+	sort.Slice(results, func(i, j int) bool { return results[i].Score.Total > results[j].Score.Total })
 
 	if limit > 0 && len(results) > limit { results = results[:limit] }
 
@@ -219,8 +221,7 @@ func (idx *Index) candidates(trigrams []string) []string {
 func (idx *Index) highlightRanges(sha string, query string) []int {
 	c, ok := idx.commits[sha]
 	if !ok || query == "" { return nil }
-
-	msg := strings.ToLower(c.Message)
+	msg := strings.ToLower(c.Subject + " " + c.Body)
 	qLen := len(query)
 
 	var ranges []int

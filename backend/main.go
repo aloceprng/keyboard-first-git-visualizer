@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -104,13 +104,21 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error binding socket: %v\n", err)
 		os.Exit(1)
 	}
-
 	defer listener.Close()
+	
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil { return}
+			conn.Close()
+		}
+	}()
 
 	srv.StartIdleTimer(cancel)
 
 	fmt.Fprintln(os.Stdout, "ready")
-	if err := srv.StartOnListener(ctx, listener); err != nil && err != context.Canceled {
+
+	if err := srv.Start(ctx); err != nil && err != context.Canceled {
 		fmt.Fprintf(os.Stderr, "server error: %v\n", err)
 		os.Exit(1)
 	}
