@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/md5"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"time"
+	"net/http"
 
 	"github.com/aloceprng/keyboard-first-git-visualizer/backend/internal/git"
 	"github.com/aloceprng/keyboard-first-git-visualizer/backend/internal/graph"
@@ -33,9 +32,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	sockPath := socketPath(repoRoot)
-	if checkExistingProcess(sockPath) {
-		fmt.Printf("server already running for %s at %s\n", repoRoot, sockPath)
+	if isAlreadyRunning() {
+		fmt.Println("ready")
 		return
 	}
 
@@ -99,21 +97,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	listener, err := bindSocket(sockPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error binding socket: %v\n", err)
-		os.Exit(1)
-	}
-	defer listener.Close()
-	
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil { return}
-			conn.Close()
-		}
-	}()
-
 	srv.StartIdleTimer(cancel)
 
 	fmt.Fprintln(os.Stdout, "ready")
@@ -122,45 +105,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "server error: %v\n", err)
 		os.Exit(1)
 	}
-}
-
-// derives the Unix socket path for this repo from its absolute path
-func socketPath(repoPath string) string {
-	hash := md5.Sum([]byte(repoPath))
-	hashStr := fmt.Sprintf("%x", hash)[:12]
-
-	cacheDir := filepath.Join(os.TempDir(), "keyboard-first-git-visualizer")
-	if err := os.MkdirAll(cacheDir, 0700); err != nil {
-		cacheDir = os.TempDir()
-	}
-
-	return filepath.Join(cacheDir, hashStr+".sock")
-}
-
-// probes the socket to see if a live server is already listening
-// returns true if the frontend should reattach instead of spawning
-func checkExistingProcess(sockPath string) bool {
-	conn, err := net.DialTimeout("unix", sockPath, 500*time.Millisecond)
-	if err != nil { return false }
-	
-	defer conn.Close()
-
-	return true
-}
-
-// creates the Unix socket and returns the net.Listener
-func bindSocket(sockPath string) (net.Listener, error) {
-	_ = os.Remove(sockPath)
-
-	listener, err := net.Listen("unix", sockPath)
-	if err != nil { return nil, fmt.Errorf("failed to bind socket %s: %w", sockPath, err) }
-
-	if err := os.Chmod(sockPath, 0600); err != nil {
-		listener.Close()
-		return nil, fmt.Errorf("failed to chmod socket: %w", err)
-	}
-
-	return listener, nil
 }
 
 // phase 1: first 500 commits, makes the server ready 
@@ -245,4 +189,12 @@ func calculateTotalLanes(rows []*graph.Row) int {
 		}
 	}
 	return maxLane + 1
+}
+
+func isAlreadyRunning() bool {
+    client := &http.Client{Timeout: 300 * time.Millisecond}
+    resp, err := client.Get("http://127.0.0.1:7832/ping")
+    if err != nil { return false }
+    resp.Body.Close()
+    return resp.StatusCode == http.StatusOK
 }
