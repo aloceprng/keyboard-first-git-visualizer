@@ -80,3 +80,13 @@ export async function postAction(req: ActionRequest): Promise<ActionEvent[]> {
     if (!response.ok) return unwrapError(response)
     return parseNDJSON<ActionEvent>(await response.text())
 }
+
+// POST /open — switch the daemon to a different repository on disk
+export async function openRepo(path: string): Promise<void> {
+    const response = await fetch(`${BASE_URL}/open`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+    })
+    if (!response.ok) return unwrapError(response)
+}

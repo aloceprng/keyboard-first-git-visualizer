@@ -47,55 +47,26 @@ func main() {
 	}
 
 	var srv *server.Server
-	g, err := loadGraph(ctx, repoRoot, repo, func(addedSHAs []string) {
-		if srv != nil {
-			srv.BroadcastUpdate(server.WatchEvent{
-				Type: "graph_updated",
-				AddedSHAs: addedSHAs,
-			})
-		}
-	})
+	g, err := loadGraph(ctx, repoRoot, repo, func(added []string) { phase2Broadcast(srv, added) })
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error loading graph: %v\n", err)
 		os.Exit(1)
 	}
 
 	srv = server.New(repoRoot, repo, g)
+	srv.WireSearch(search.Build(commitsFromGraph(g)))
 
-	commits := make([]*graph.Commit, 0, len(g.Rows))
-	for _, row := range g.Rows {
-		if row.Commit != nil {
-			commits = append(commits, row.Commit)
-		}
-	}
-	searchIdx := search.Build(commits)
-	srv.WireSearch(searchIdx)
-
-	w, err := watcher.New(repoRoot, func(event watcher.InvalidationEvent) {
-		if !event.RefsChanged { return }
-
-		refToSHA, _, err := git.BuildRefIndex(repo)
-		if err != nil { return }
-
-		g.Lock()
-		g.RefIndex = refToSHA
-		g.Unlock()
-
-		srv.BroadcastUpdate(server.WatchEvent{
-			Type: "refs_changed",
-			InProgress: event.InProgress,
-		})
-	})
+	w, err := newWatcher(srv, repoRoot, repo, g)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating file watcher: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error starting file watcher: %v\n", err)
 		os.Exit(1)
 	}
-	
 	srv.WireWatcher(w)
-	if err := w.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "error starting watcher: %v\n", err)
-		os.Exit(1)
-	}
+
+	// let the frontend switch repositories at runtime via POST /open
+	srv.SetOpener(func(path string) error {
+		return loadRepoInto(ctx, srv, path)
+	})
 
 	srv.StartIdleTimer(cancel)
 
@@ -160,6 +131,81 @@ func loadGraph(ctx context.Context, repoPath string, repo *gogit.Repository, onP
 	}
 
 	return g, nil
+}
+
+// opens the repo at path, rebuilds the graph/search/watcher, and swaps it all
+// into the running server. Backs the POST /open endpoint.
+func loadRepoInto(ctx context.Context, srv *server.Server, path string) error {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("can't resolve path: %w", err)
+	}
+
+	repoRoot, err := git.FindRepoRoot(absPath)
+	if err != nil {
+		return fmt.Errorf("not a git repository: %w", err)
+	}
+
+	repo, err := git.OpenRepo(repoRoot)
+	if err != nil {
+		return fmt.Errorf("error opening repository: %w", err)
+	}
+
+	g, err := loadGraph(ctx, repoRoot, repo, func(added []string) { phase2Broadcast(srv, added) })
+	if err != nil {
+		return fmt.Errorf("error loading graph: %w", err)
+	}
+
+	w, err := newWatcher(srv, repoRoot, repo, g)
+	if err != nil {
+		return fmt.Errorf("error starting file watcher: %w", err)
+	}
+
+	srv.Reset(repoRoot, repo, g, search.Build(commitsFromGraph(g)), w)
+	return nil
+}
+
+// creates and starts a file watcher that keeps the graph's ref index live.
+func newWatcher(srv *server.Server, repoRoot string, repo *gogit.Repository, g *graph.Graph) (*watcher.Watcher, error) {
+	w, err := watcher.New(repoRoot, func(event watcher.InvalidationEvent) {
+		if !event.RefsChanged { return }
+
+		refToSHA, _, err := git.BuildRefIndex(repo)
+		if err != nil { return }
+
+		g.Lock()
+		g.RefIndex = refToSHA
+		g.Unlock()
+
+		srv.BroadcastUpdate(server.WatchEvent{
+			Type: "refs_changed",
+			InProgress: event.InProgress,
+		})
+	})
+	if err != nil { return nil, err }
+
+	if err := w.Start(); err != nil { return nil, err }
+	return w, nil
+}
+
+// flattens a graph's rows into the commit slice the search index expects.
+func commitsFromGraph(g *graph.Graph) []*graph.Commit {
+	commits := make([]*graph.Commit, 0, len(g.Rows))
+	for _, row := range g.Rows {
+		if row.Commit != nil {
+			commits = append(commits, row.Commit)
+		}
+	}
+	return commits
+}
+
+// notifies WebSocket clients of phase-2 commits, once the server exists.
+func phase2Broadcast(srv *server.Server, addedSHAs []string) {
+	if srv == nil { return }
+	srv.BroadcastUpdate(server.WatchEvent{
+		Type: "graph_updated",
+		AddedSHAs: addedSHAs,
+	})
 }
 
 // helper functions

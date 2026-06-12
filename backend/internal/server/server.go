@@ -20,13 +20,19 @@ const (
 )
 
 type Server struct {
+	// stateMu guards the swappable per-repo state below, so /open can replace
+	// the served repository while requests are in flight.
+	stateMu  sync.RWMutex
 	repoPath string
 	repo     *gogit.Repository
 	graph    *graph.Graph
 	search   *search.Index
 	runner   *action.Runner
 	watcher  *watcher.Watcher
-	hub      *wsHub
+
+	opener func(path string) error // set by main; loads + swaps a new repo
+
+	hub *wsHub
 
 	mux        *http.ServeMux
 	httpServer *http.Server
@@ -55,6 +61,35 @@ func (s *Server) WireSearch(idx *search.Index) { s.search = idx }
 
 // plugs in the file watcher once it is started
 func (s *Server) WireWatcher(w *watcher.Watcher) { s.watcher = w }
+
+// registers the callback /open uses to load and swap in a new repository
+func (s *Server) SetOpener(fn func(path string) error) { s.opener = fn }
+
+// swaps the served repository and all its derived state,
+// stopping the previous file watcher. Called by the /open flow.
+func (s *Server) Reset(repoPath string, repo *gogit.Repository, g *graph.Graph, idx *search.Index, w *watcher.Watcher) {
+	s.stateMu.Lock()
+	old := s.watcher
+	s.repoPath = repoPath
+	s.repo = repo
+	s.graph = g
+	s.search = idx
+	s.runner = action.New(repoPath)
+	s.watcher = w
+	s.stateMu.Unlock()
+
+	if old != nil {
+		_ = old.Stop()
+	}
+}
+
+// returns a consistent snapshot of the swappable per-repo fields
+// Handlers grab this once so a concurrent /open can't tear their view
+func (s *Server) state() (repoPath string, repo *gogit.Repository, g *graph.Graph, idx *search.Index, runner *action.Runner) {
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	return s.repoPath, s.repo, s.graph, s.search, s.runner
+}
 
 // begins serving HTTP on listenAddr and blocks until the context is
 // cancelled or the server is shut down. also starts watcherhub
@@ -115,6 +150,7 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/refs", s.handleRefs)
 	s.mux.HandleFunc("/search", s.handleSearch)
 	s.mux.HandleFunc("/action", s.handleAction)
+	s.mux.HandleFunc("/open", s.handleOpen)
 	s.mux.HandleFunc("/watch", s.handleWatch)
 
 	s.mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {

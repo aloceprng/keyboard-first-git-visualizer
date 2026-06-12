@@ -45,9 +45,10 @@ func (s *Server) handleGraph(w http.ResponseWriter, r *http.Request) {
 	before := q.Get("before")
 	filter := q.Get("filter")
 
-	rows := s.graph.Rows
+	_, _, g, _, _ := s.state()
+	rows := g.Rows
 
-	if filter != "" && filter != "all" { rows = filterRowsByBranch(rows, filter, s.graph) }
+	if filter != "" && filter != "all" { rows = filterRowsByBranch(rows, filter, g) }
 
 	start := 0
 	if before != "" {
@@ -99,13 +100,14 @@ func (s *Server) handleCommitRoute(w http.ResponseWriter, r *http.Request) {
 
 // serves full commit metadata (no diff content)
 func (s *Server) handleCommit(w http.ResponseWriter, r *http.Request, sha string) {
-	commit, ok := s.graph.BySHA[sha]
+	_, repo, g, _, _ := s.state()
+	commit, ok := g.BySHA[sha]
 	if !ok {
 		writeError(w, http.StatusNotFound, fmt.Sprintf("commit %s not found", sha[:7]))
 		return
 	}
 
-	stats, changedFiles, err := commitStats(s.repo, sha)
+	stats, changedFiles, err := commitStats(repo, sha)
 	if err != nil {
 		stats = diffStats{}
 		changedFiles = nil
@@ -135,8 +137,10 @@ func (s *Server) handleRefs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refs := make([]refResponse, 0, len(s.graph.RefIndex))
-	for name, sha := range s.graph.RefIndex {
+	repoPath, _, g, _, _ := s.state()
+
+	refs := make([]refResponse, 0, len(g.RefIndex))
+	for name, sha := range g.RefIndex {
 		// HEAD / HEAD_REF are internal pointers, not listable refs
 		if name == "HEAD" || name == "HEAD_REF" {
 			continue
@@ -145,21 +149,21 @@ func (s *Server) handleRefs(w http.ResponseWriter, r *http.Request) {
 			Name:      name,
 			SHA:       sha,
 			Type:      refType(name),
-			IsCurrent: isCurrentBranch(name, s.graph),
+			IsCurrent: isCurrentBranch(name, g),
 		})
 	}
 
-	inProgress, err := gitpkg.InProgressState(s.repoPath)
+	inProgress, err := gitpkg.InProgressState(repoPath)
 	if err != nil {
 		inProgress = ""
 	}
 
-	meta, err := gitpkg.InProgressMeta(s.repoPath)
+	meta, err := gitpkg.InProgressMeta(repoPath)
 	if err != nil {
 		meta = nil
 	}
 
-	head, headBranch := resolveHEAD(s.graph)
+	head, headBranch := resolveHEAD(g)
 
 	writeJSON(w, http.StatusOK, refsResponse{
 		Refs:               refs,
@@ -181,7 +185,8 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.search == nil {
+	_, _, _, idx, _ := s.state()
+	if idx == nil {
 		writeError(w, http.StatusServiceUnavailable, "search index is still building")
 		return
 	}
@@ -206,8 +211,40 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	results := s.search.Search(query, kind, limit)
+	results := idx.Search(query, kind, limit)
 	writeJSON(w, http.StatusOK, results)
+}
+
+// serves POST /open — re-opens the daemon on a different repository path and
+// rebuilds the graph, search index, and watcher in place.
+func (s *Server) handleOpen(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if strings.TrimSpace(req.Path) == "" {
+		writeError(w, http.StatusBadRequest, "path is required")
+		return
+	}
+	if s.opener == nil {
+		writeError(w, http.StatusServiceUnavailable, "open is not available")
+		return
+	}
+
+	if err := s.opener(req.Path); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 
@@ -250,11 +287,13 @@ func (s *Server) handleAction(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	_, _, _, _, runner := s.state()
+
 	out := make(chan action.ActionEvent, 64)
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- s.runner.Execute(r.Context(), req, out)
+		errCh <- runner.Execute(r.Context(), req, out)
 		close(out)
 	}()
 
