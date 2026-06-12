@@ -1,32 +1,15 @@
-import type { Row, CommitDetail, RefsResponse, SearchResult,  ActionRequest, ActionEvent, } from "./types"
-
-async function* streamNDJSON<T>(response: Response): AsyncGenerator<T> {
-    const reader = response.body!.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ""
-
-    while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-
-        const lines = buffer.split("\n")
-        buffer = lines.pop()!
-
-        for (const line of lines) {
-            const trimmed = line.trim()
-            if (trimmed) yield JSON.parse(trimmed) as T
-        }
-    }
-
-    const remaining = buffer.trim()
-    if (remaining) yield JSON.parse(remaining) as T
-}
+import type {
+    Row,
+    CommitDetail,
+    RefsResponse,
+    SearchResult,
+    ActionRequest,
+    ActionEvent,
+} from "./types"
 
 export const BASE_URL = "http://127.0.0.1:7832"
 
-function buildURL(path: string, params: Record<string, string | undefined>): string {
+function buildURL(path: string, params: Record<string, string | undefined> = {}): string {
     const url = new URL(`${BASE_URL}${path}`)
     for (const [key, value] of Object.entries(params)) {
         if (value !== undefined && value !== "") {
@@ -36,80 +19,64 @@ function buildURL(path: string, params: Record<string, string | undefined>): str
     return url.toString()
 }
 
-async function get<T>(path: string, params: Record<string, string | undefined> = {}): Promise<T> {
+async function unwrapError(response: Response): Promise<never> {
+    const body = await response.json().catch(() => ({ error: response.statusText }))
+    throw new Error(body.error ?? `HTTP ${response.status}`)
+}
+
+async function getJSON<T>(path: string, params: Record<string, string | undefined> = {}): Promise<T> {
     const response = await fetch(buildURL(path, params))
-    if (!response.ok) {
-        const body = await response.json().catch(() => ({ error: response.statusText }))
-        throw new Error(body.error ?? `HTTP ${response.status}`)
-    }
+    if (!response.ok) return unwrapError(response)
     return response.json()
 }
 
-export async function fetchGraph(
-    limit    = 500,
-    cursor?: string,
-    filter?: string,
-    onBatch?: (rows: Row[]) => void,
-): Promise<{ hasMore: boolean }> {
-    const response = await fetch(
-        buildURL("/graph", {
-            limit:  String(limit),
-            before: cursor,
-            filter,
-        })
-    )
-
-    if (!response.ok) {
-        const body = await response.json().catch(() => ({ error: response.statusText }))
-        throw new Error(body.error ?? `HTTP ${response.status}`)
-    }
-
-    const hasMore = response.headers.get("X-Has-More") === "true"
-
-    let batch: Row[] = []
-    for await (const row of streamNDJSON<Row>(response)) {
-        batch.push(row)
-        if (batch.length >= 50) {
-            onBatch?.(batch)
-            batch = []
-        }
-    }
-    if (batch.length > 0) onBatch?.(batch)
-
-    return { hasMore }
+// for mvp, no streaming when parsing
+function parseNDJSON<T>(text: string): T[] {
+    return text
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .map((line) => JSON.parse(line) as T)
 }
 
-export function fetchCommit(sha: string): Promise<CommitDetail> {
-    return get<CommitDetail>(`/commit/${sha}`)
+// GET /graph?limit=500 (all rows at once)
+export async function fetchGraph(limit = 500, before?: string, filter?: string): Promise<Row[]> {
+    const response = await fetch(buildURL("/graph", { limit: String(limit), before, filter }))
+    if (!response.ok) return unwrapError(response)
+    return parseNDJSON<Row>(await response.text())
 }
 
+// GET /refs
 export function fetchRefs(): Promise<RefsResponse> {
-    return get<RefsResponse>("/refs")
+    return getJSON<RefsResponse>("/refs")
 }
 
-export function fetchSearch(
-    q:     string,
-    type:  "commit" | "author" | "branch" | "file" = "commit",
-    limit  = 20,
+// GET /commit/:sha
+export function fetchCommit(sha: string): Promise<CommitDetail> {
+    return getJSON<CommitDetail>(`/commit/${sha}`)
+}
+
+// GET /search?q=... — backend hits are {SHA, Score, Highlight}; normalise to SHA.
+interface RawSearchHit {
+    SHA: string
+}
+
+export async function fetchSearch(
+    q: string,
+    type: "commit" | "author" | "branch" | "file" = "commit",
+    limit = 20,
 ): Promise<SearchResult[]> {
-    return get<SearchResult[]>("/search", {
-        q,
-        type,
-        limit: String(limit),
-    })
+    const hits = await getJSON<RawSearchHit[]>("/search", { q, type, limit: String(limit) })
+    return hits.map((h) => ({ sha: h.SHA }))
 }
 
-export async function* postAction(req: ActionRequest): AsyncGenerator<ActionEvent> {
+// POST /action — execute a git operation
+export async function postAction(req: ActionRequest): Promise<ActionEvent[]> {
     const response = await fetch(`${BASE_URL}/action`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(req),
     })
-
-    if (response.status === 409 || !response.ok) {
-        const body = await response.json().catch(() => ({ error: response.statusText }))
-        throw new Error(body.error ?? `HTTP ${response.status}`)
-    }
-
-    yield* streamNDJSON<ActionEvent>(response)
+    if (!response.ok) return unwrapError(response)
+    return parseNDJSON<ActionEvent>(await response.text())
 }

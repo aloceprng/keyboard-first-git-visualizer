@@ -38,7 +38,7 @@ export interface Row {
 
 // +N −N in F files summary from commit.Stats()
 export interface DiffStats {
-  additions: number;
+  insertions: number;
   deletions: number;
   files: number;
 }
@@ -52,16 +52,20 @@ export interface CommitDetail {
   author: GitPerson;
   committer: GitPerson;
   timestamp: string;
-  committedAt: string;
   parents: string[];
   refs: string[];
-  diffStats?: DiffStats;
+  stats: DiffStats;
+  changedFiles: string[];
 }
 
-// GET /refs)
+// GET /refs
+export type RefType = "branch" | "remote" | "tag" | "stash";
+
 export interface RefEntry {
-  ref: string;
+  name: string;
   sha: string;
+  type: RefType;
+  isCurrent: boolean;
 }
 
 export type InProgressOperation =
@@ -72,37 +76,20 @@ export type InProgressOperation =
   | "revert"
   | "bisect";
 
-// structured metadata for the current in-progress operation
-export interface InProgressMeta {
-  // for rebase: current step number (1-based)
-  step?: number;
-  // for rebase: total number of steps
-  total?: number;
-  // for cherry-pick / merge: SHA being applied
-  sha?: string;
-}
-
 // full response from GET /refs
 export interface RefsResponse {
-  refs: Record<string, string>;
-  head: string;
-  headSha: string;
+  refs: RefEntry[];
+  head: string;        // HEAD commit SHA
+  headBranch: string;  // branch HEAD points to, "" if detached
   inProgress: InProgressOperation;
-  inProgressMeta?: InProgressMeta;
+  inProgressMeta?: Record<string, string>;
 }
 
-// GET /search)
+// GET /search
 export type SearchResultType = "commit" | "branch" | "tag" | "author";
 
 export interface SearchResult {
-  type: SearchResultType;
   sha: string;
-  short: string;
-  subject: string;
-  author: GitPerson;
-  timestamp: string;
-  refs: string[];
-  score: number;
 }
 
 export interface SearchParams {
@@ -132,6 +119,7 @@ export type ActionName =
   | "stash_pop"
   | "stash_drop"
   | "tag"
+  | "tag_delete"
   | "fetch";
 
 // body for POST /action
@@ -158,27 +146,3 @@ export interface MovedRef {
   to: string;
 }
 
-/**
- * Event pushed by the server when the repo changes.
- *
- * graph_updated: new commits pushed or removed.
- *   - addedShas: prepend to graph (fetch each via /commit/:sha)
- *   - removedShas: remove from graph (force-push rewrite)
- *   - movedRefs: patch ref labels without a full reload
- *
- * refs_changed: ref labels moved without new commits.
- *   - Re-fetch /refs and call graphStore.updateMovedRefs.
- */
-export interface WatchEvent {
-  type: WatchEventType;
-  addedShas: string[];
-  removedShas: string[];
-  movedRefs: MovedRef[];
-  inProgress: InProgressOperation;
-}
-
-export interface GraphParams {
-  limit?: number;
-  before?: string;
-  filter?: string;
-}
