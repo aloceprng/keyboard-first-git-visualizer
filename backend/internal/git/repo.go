@@ -88,6 +88,15 @@ func BuildRefIndex(repo *git.Repository) (map[string]string, map[string][]string
 		shaToRef[hash] = append(shaToRef[hash], refName)
 	}
 
+	// HEAD is a symbolic ref (skipped above), so resolve it explicitly: record
+	// the commit it points at, and the branch name when it's not detached.
+	if head, err := repo.Head(); err == nil {
+		refToSHA["HEAD"] = head.Hash().String()
+		if head.Name().IsBranch() {
+			refToSHA["HEAD_REF"] = head.Name().String()
+		}
+	}
+
 	return refToSHA, shaToRef, nil
 }
  

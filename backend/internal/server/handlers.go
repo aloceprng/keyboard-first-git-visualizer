@@ -137,6 +137,10 @@ func (s *Server) handleRefs(w http.ResponseWriter, r *http.Request) {
 
 	refs := make([]refResponse, 0, len(s.graph.RefIndex))
 	for name, sha := range s.graph.RefIndex {
+		// HEAD / HEAD_REF are internal pointers, not listable refs
+		if name == "HEAD" || name == "HEAD_REF" {
+			continue
+		}
 		refs = append(refs, refResponse{
 			Name:      name,
 			SHA:       sha,
@@ -413,17 +417,15 @@ func refType(name string) string {
 	}
 }
 
-// returns true if name is the branch HEAD currently points to
+// returns true if name is the branch HEAD currently points to.
+// Matched by ref name, not SHA — otherwise every branch sitting on the
+// HEAD commit would report as current.
 func isCurrentBranch(name string, g *graph.Graph) bool {
-	headSHA, ok := g.RefIndex["HEAD"]
-	if !ok {
+	headRef, ok := g.RefIndex["HEAD_REF"]
+	if !ok || headRef == "" {
 		return false
 	}
-	sha, ok := g.RefIndex[name]
-	if !ok {
-		return false
-	}
-	return sha == headSHA
+	return name == headRef
 }
 
 // returns the current HEAD SHA and the branch name it points to

@@ -15,8 +15,13 @@ func AssignLanes(sorted []*graph.Commit) ([]*graph.Row, error) {
     rows := make([]*graph.Row, 0, len(sorted))
 
 	for _, commit := range sorted{
+		preActive := make([]bool, len(lt.Slots))
+		for i, slot := range lt.Slots {
+			preActive[i] = slot.SHA != ""
+		}
+
 		lane := findOrClaimLane(lt, commit.SHA)
-		
+
 		commit.Lane = lane
 		commit.Row = lt.RowIndex
 
@@ -59,14 +64,11 @@ func AssignLanes(sorted []*graph.Commit) ([]*graph.Row, error) {
 		edges = append(edges, mergeEdges...)
 
 		commit.Edges = edges
-		commit.Passthrough = buildPassthrough(lt,
-			lane,
-			edges,
-		)
+		commit.Passthrough = buildPassthrough(lt, lane, preActive)
 
 		rows = append(rows, &graph.Row{
 			Commit:      commit,
-			ActiveLanes: maxActiveLane(lt),
+			ActiveLanes: rowActiveLanes(lt, lane, edges),
 		})
 
 		lt.RowIndex++
@@ -140,26 +142,36 @@ func enforceStability(lt *graph.LaneTable) int {
 	return -1
 }
  
-// computes the bitmask of lanes that are active at this row
-func buildPassthrough(lt *graph.LaneTable, commitLane int, edges []graph.Edge) uint64 {
+// computes the bitmask of lanes drawn as a straight vertical bar through this
+// row: lanes that were active coming into the row, are still active leaving it,
+// and aren't the commit's own lane. Requiring pre-row activity excludes lanes
+// opened on this row (branch-out targets, the tip's own lane), whose line
+// starts here rather than passing through.
+func buildPassthrough(lt *graph.LaneTable, commitLane int, preActive []bool) uint64 {
 	var mask uint64
 
-	involved := make(map[int]bool)
-	involved[commitLane] = true
-
-	for _, edge := range edges {
-		involved[edge.FromLane] = true
-		involved[edge.ToLane] = true
-	}
-
 	for i, slot := range lt.Slots {
-		if slot.SHA == "" { continue }
-		if involved[i] { continue }
-
-		if i < 64 {	mask |= uint64(1) << i }
+		if i == commitLane { continue }
+		if slot.SHA == "" { continue }                  // freed — not active after this row
+		if i >= len(preActive) || !preActive[i] { continue } // opened on this row
+		if i < 64 { mask |= uint64(1) << i }
 	}
 
 	return mask
+}
+
+// number of lanes occupied at this row: the highest of any still-active lane,
+// the commit's own lane, and any lane an edge touches
+func rowActiveLanes(lt *graph.LaneTable, commitLane int, edges []graph.Edge) int {
+	active := maxActiveLane(lt)
+	if commitLane+1 > active { active = commitLane + 1 }
+
+	for _, e := range edges {
+		if e.FromLane+1 > active { active = e.FromLane + 1 }
+		if e.ToLane+1 > active { active = e.ToLane + 1 }
+	}
+
+	return active
 }
  
 // processes every parent beyond the first on a merge commit
