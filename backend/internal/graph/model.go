@@ -15,15 +15,15 @@ const (
 )
  
 type Identity struct {
-	Name  string
-	Email string
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
- 
+
 type Edge struct {
-	FromLane int
-	ToLane   int
-	ToRow    int
-	Type     EdgeType
+	FromLane int      `json:"fromLane"`
+	ToLane   int      `json:"toLane"`
+	ToRow    int      `json:"toRow"`
+	Type     EdgeType `json:"type"`
 }
  
 type Commit struct {
