@@ -1,0 +1,7 @@
+:root {
+  --radius-small: calc(var(--small) * 1px);   /* 8  — keycaps, inputs, small chips */
+  --radius-medium: calc(var(--medium) * 1px); /* 24 — swatches, cards, type icons */
+  --radius-large: calc(var(--large) * 1px);   /* 48 — large containers */
+  --radius-mega: calc(var(--mega) * 1px);     /* 60 — page header/footer bands */
+  --radius-round: 999px;
+}

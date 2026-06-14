@@ -1,0 +1,9 @@
+:root {
+  --space-xs: 8px;    /* swatch label gap */
+  --space-s: 16px;    /* heading ↔ description */
+  --space-m: 20px;    /* row gaps, inner padding */
+  --space-l: 24px;    /* header heading ↔ subheading */
+  --space-xl: 48px;   /* component groups */
+  --space-2xl: 60px;  /* large separations */
+  --space-3xl: 80px;  /* spec-page section padding */
+}

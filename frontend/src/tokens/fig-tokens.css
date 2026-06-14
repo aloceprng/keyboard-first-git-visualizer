@@ -1,0 +1,25 @@
+:root {
+  --greyscale-black: rgb(52,52,52); /* @kind color */
+  --greyscale-grey-dark: rgb(103,103,103); /* @kind color */
+  --greyscale-grey-light: rgb(217,217,217); /* @kind color */
+  --greyscale-grey-medium: rgb(149,149,149); /* @kind color */
+  --greyscale-white: rgb(255,255,255); /* @kind color */
+  --header-letter-spacing: -4; /* @kind font */
+  --large: 48; /* @kind radius */
+  --main-background: rgb(45,45,45); /* @kind color */
+  --main-blue: rgb(8,82,161); /* @kind color */
+  --main-green: rgb(23,195,178); /* @kind color */
+  --main-red: rgb(221,28,26); /* @kind color */
+  --main-yellow: rgb(249,193,26); /* @kind color */
+  --medium: 24; /* @kind radius */
+  --mega: 60; /* @kind radius */
+  --neutrals-cream-light: rgb(255,253,250); /* @kind color */
+  --neutrals-cream: rgb(254,244,219); /* @kind color */
+  --neutrals-navy-light: rgb(63,68,100); /* @kind color */
+  --neutrals-navy: rgb(45,48,71); /* @kind color */
+  --secondary-blue: rgb(109,176,248); /* @kind color */
+  --secondary-green: rgb(141,242,232); /* @kind color */
+  --secondary-red: rgb(244,160,159); /* @kind color */
+  --secondary-yellow: rgb(253,229,161); /* @kind color */
+  --small: 8; /* @kind radius */
+}

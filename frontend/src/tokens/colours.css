@@ -1,0 +1,29 @@
+:root {
+  --text-primary: var(--neutrals-navy);
+  --text-secondary: var(--neutrals-navy-light);
+  --text-muted: var(--greyscale-grey-medium);
+  --text-inverse: var(--greyscale-white);
+  --text-on-dark-warm: var(--neutrals-cream);
+
+  --surface-page: var(--greyscale-white);
+  --surface-card: var(--greyscale-white);
+  --surface-panel: var(--neutrals-navy);
+  --surface-panel-raised: var(--neutrals-navy-light);
+  --surface-app: var(--main-background);
+  --surface-warm: var(--neutrals-cream);
+  --surface-warm-light: var(--neutrals-cream-light);
+
+  --border-default: var(--greyscale-grey-light);
+  --border-strong: var(--greyscale-grey-medium);
+  --border-dark: var(--greyscale-grey-dark);
+
+  --commit-red: var(--main-red);        --commit-red-ring: var(--secondary-red);
+  --commit-yellow: var(--main-yellow);  --commit-yellow-ring: var(--secondary-yellow);
+  --commit-green: var(--main-green);    --commit-green-ring: var(--secondary-green);
+  --commit-blue: var(--main-blue);      --commit-blue-ring: var(--secondary-blue);
+
+  --action-primary: var(--neutrals-navy);
+  --action-primary-hover: var(--neutrals-navy-light);
+  --action-danger: var(--main-red);
+  --focus-ring: var(--secondary-blue);
+}

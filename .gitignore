@@ -35,3 +35,7 @@ Thumbs.db
 
 # Socket file the daemon creates
 /tmp/gitvis-*.sock
+
+# other
+mvp-overview.md
+frontend/src/reference/*
