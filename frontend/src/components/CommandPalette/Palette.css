@@ -1,0 +1,243 @@
+/* Command palette — styled from the Figma "global / searching / branch" frames.
+   All colour/geometry comes from the --cp-* tokens defined in index.css. */
+
+.cp__overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--cp-overlay);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 11vh;
+    z-index: 100;
+}
+
+.cp {
+    width: 100%;
+    max-width: var(--cp-width);
+    margin: 0 16px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius);
+    box-shadow: 0 28px 80px -20px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+    font-family: var(--font-secondary);
+}
+
+/* ── search / input bar ─────────────────────────────────────────────────── */
+.cp__search {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: 66px;
+    padding: 0 var(--cp-pad);
+    border-bottom: 1px solid var(--cp-border);
+    flex: none;
+}
+.cp__input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--cp-text-strong);
+    font-family: var(--font-secondary);
+    font-size: 24px;
+    line-height: 1;
+}
+.cp__input::placeholder {
+    color: var(--cp-text-muted);
+}
+
+/* ── tabs ───────────────────────────────────────────────────────────────── */
+.cp__tabs {
+    display: flex;
+    gap: 20px;
+    padding: var(--cp-pad);
+    border-bottom: 1px solid var(--cp-border);
+    flex: none;
+}
+.cp__tab {
+    padding: 11px 24px;
+    border: none;
+    border-radius: var(--cp-radius-key);
+    background: transparent;
+    color: var(--cp-text-muted);
+    font-family: var(--font-secondary);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+.cp__tab:hover {
+    color: var(--cp-text);
+}
+.cp__tab--active,
+.cp__tab--active:hover {
+    background: var(--cp-surface-raised);
+    color: var(--cp-text-strong);
+}
+
+/* ── prompt title bar ───────────────────────────────────────────────────── */
+.cp__promptbar {
+    padding: 16px var(--cp-pad);
+    border-bottom: 1px solid var(--cp-border);
+    flex: none;
+}
+.cp__prompttitle {
+    font-size: 16px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--cp-text-muted);
+}
+
+/* ── selected-commit context ────────────────────────────────────────────── */
+.cp__context {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px var(--cp-pad);
+    background: var(--cp-surface-raised);
+    border-bottom: 1px solid var(--cp-border);
+    flex: none;
+}
+.cp__ctxdot {
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius-round);
+    flex: none;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.07);
+}
+.cp__ctxtext {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    flex: 1;
+}
+.cp__ctxtitle {
+    font-size: 18px;
+    color: var(--cp-text-strong);
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cp__ctxsub {
+    font-size: 14px;
+    color: var(--cp-text-muted);
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cp__ctxsha {
+    font-family: var(--font-primary);
+    color: var(--secondary-green);
+}
+
+/* ── error banner ───────────────────────────────────────────────────────── */
+.cp__error {
+    padding: 12px var(--cp-pad);
+    background: rgba(221, 28, 26, 0.12);
+    border-bottom: 1px solid var(--cp-border);
+    color: var(--secondary-red);
+    font-size: 15px;
+    flex: none;
+}
+
+/* ── list ───────────────────────────────────────────────────────────────── */
+.cp__list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.cp__grouphead {
+    padding: 16px var(--cp-pad) 6px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cp-text-muted);
+}
+.cp__row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 56px;
+    padding: 0 var(--cp-pad);
+    cursor: pointer;
+    color: var(--cp-text);
+}
+.cp__row--active {
+    background: var(--cp-surface-raised);
+    box-shadow: inset 3px 0 0 var(--cp-accent);
+}
+.cp__row--danger .cp__label {
+    color: var(--cp-danger);
+}
+.cp__row--danger.cp__row--active {
+    box-shadow: inset 3px 0 0 var(--cp-danger);
+}
+.cp__rowdot {
+    width: 14px;
+    height: 14px;
+    border-radius: var(--radius-round);
+    flex: none;
+}
+.cp__label {
+    flex: 1;
+    min-width: 0;
+    font-size: 20px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cp__meta {
+    flex: none;
+    font-family: var(--font-primary);
+    font-size: 15px;
+    letter-spacing: -0.04em;
+    color: var(--cp-text-muted);
+}
+.cp__keys {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+}
+.cp__empty {
+    padding: 28px var(--cp-pad);
+    color: var(--cp-text-muted);
+    font-size: 18px;
+    text-align: center;
+}
+
+/* ── footer ─────────────────────────────────────────────────────────────── */
+.cp__footer {
+    display: flex;
+    align-items: center;
+    height: 66px;
+    padding: 0 var(--cp-pad);
+    border-top: 1px solid var(--cp-border);
+    flex: none;
+}
+.cp__hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    color: var(--cp-text-muted);
+}
+.cp__brand {
+    margin-left: auto;
+    font-family: var(--font-primary);
+    font-size: 18px;
+    letter-spacing: -0.18em;
+    color: var(--cp-text);
+    padding-right: 0.18em;
+}
