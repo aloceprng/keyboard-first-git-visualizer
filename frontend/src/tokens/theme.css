@@ -1,0 +1,30 @@
+:root {
+    --surface-base: color-mix(in srgb, var(--neutrals-navy) 80%, #000);
+    --surface: var(--neutrals-navy);
+    --surface-raised: var(--neutrals-navy-light);
+    --surface-overlay: rgba(13, 17, 23, 0.66);
+
+    --border: var(--neutrals-navy-light);
+    --border-strong: var(--greyscale-grey-medium);
+
+    --text: var(--neutrals-cream);
+    --text-strong: var(--greyscale-white);
+    --text-muted: var(--greyscale-grey-medium);
+    --text-accent: var(--secondary-green);
+
+    --accent: var(--main-green);
+    --accent-soft: var(--secondary-green);
+    --info: var(--secondary-blue);
+    --info-strong: var(--main-blue);
+    --danger: var(--main-red);
+    --danger-soft: var(--secondary-red);
+    --warn: var(--main-yellow);
+    --warn-soft: var(--secondary-yellow);
+    --ok: var(--main-green);
+
+    --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.55);
+    --shadow-pop: 0 28px 80px -20px rgba(0, 0, 0, 0.7);
+
+    --radius-surface: var(--radius-medium);
+}
