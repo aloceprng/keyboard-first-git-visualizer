@@ -1,0 +1,56 @@
+@import "./tokens/fig-tokens.css";
+@import "./tokens/colours.css";
+@import "./tokens/fonts.css";
+@import "./tokens/radius.css";
+@import "./tokens/spacing.css";
+@import "./tokens/typography.css";
+@import "./tokens/theme.css";
+
+:root {
+    color-scheme: dark;
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Command-palette tokens — component-scoped aliases over the app theme
+   (tokens/theme.css), so the palette stays self-documenting while inheriting
+   the global skin. Re-skin via theme.css; tweak palette-only geometry here.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+    --cp-surface: var(--surface);
+    --cp-surface-raised: var(--surface-raised);
+    --cp-border: var(--border);
+
+    --cp-text: var(--text);
+    --cp-text-strong: var(--text-strong);
+    --cp-text-muted: var(--text-muted);
+
+    /* keycaps (DotGothic legends on a raised chip) */
+    --cp-key-bg: var(--surface-raised);
+    --cp-key-text: var(--text);
+    --cp-key-shadow: 0 0 0 0.8px var(--greyscale-grey-medium);
+
+    --cp-accent: var(--accent);
+    --cp-danger: var(--danger);
+
+    /* geometry — Figma: medium 24px shell, small 8px chips */
+    --cp-radius: var(--radius-surface);
+    --cp-radius-key: var(--radius-small);
+    --cp-pad: 20px;
+    --cp-width: 600px;
+    --cp-overlay: var(--surface-overlay);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    margin: 0;
+    height: 100%;
+    background: var(--surface-base);
+    color: var(--text);
+    font-family: var(--font-secondary);
+}
