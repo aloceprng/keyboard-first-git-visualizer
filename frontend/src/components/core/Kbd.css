@@ -1,0 +1,14 @@
+.gv-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0 6px;
+    font-family: var(--font-primary);
+    line-height: 1;
+    color: var(--cp-key-text, var(--neutrals-cream));
+    background: var(--cp-key-bg, var(--neutrals-navy-light));
+    border: 1px solid var(--neutrals-navy-light);
+    border-radius: var(--radius-small);
+    box-shadow: var(--cp-key-shadow, 0 0 0 0.8px var(--greyscale-grey-medium));
+}
