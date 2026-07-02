@@ -1,0 +1,61 @@
+.confirm__overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--surface-overlay);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+.confirm {
+    width: 420px;
+    max-width: 90vw;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-surface);
+    padding: 24px;
+    box-shadow: var(--shadow-modal);
+    font-family: var(--font-secondary);
+}
+
+.confirm__message {
+    margin: 0 0 20px;
+    font-size: 16px;
+    line-height: 1.45;
+    color: var(--text);
+}
+
+.confirm__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.confirm__btn {
+    padding: 8px 18px;
+    border-radius: var(--radius-small);
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    color: var(--text);
+    font-family: var(--font-secondary);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.confirm__btn:hover {
+    border-color: var(--border-strong);
+}
+
+.confirm__btn--danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--greyscale-white);
+    font-weight: 700;
+}
+
+.confirm__btn--danger:hover {
+    background: var(--danger-soft);
+    border-color: var(--danger-soft);
+    color: var(--neutrals-navy);
+}
